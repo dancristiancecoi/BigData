@@ -36,38 +36,37 @@ public class MySimpleMapReduceJob extends Configured implements Tool {
 		// The main map() function; the input key/value classes must match the first two above, and the key/value classes in your emit() statement must match the latter two above.
 		@Override
 		protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+			
 			String[] lines = value.toString().split("/n");
 			
 			for ( String line : lines){
 				
-			
-			if (line.contains("REVISION")) {
-				String[] lineSplitted = line.split(" ");
-				ArticlePageRankWritable newKey = new ArticlePageRankWritable();
-				newKey.setArticle(lineSplitted[3]);
-				newKey.setPageRank(1.0);
-				this.articlePageRank = newKey;
-				
-			}
-			if (line.contains("MAIN")) {
-				String[] lineSplitted = line.split(" ");
-				ArrayList<String> outlinks = new ArrayList<String>(Arrays.asList(lineSplitted));
-				outlinks.remove(0);
-				if (lineSplitted.length == 1) {
-					this.outlink.set("");
-					context.write(articlePageRank, this.outlink);
+				if (line.contains("REVISION")) {
+					String[] lineSplitted = line.split(" ");
+					ArticlePageRankWritable newKey = new ArticlePageRankWritable();
+					newKey.setArticle(lineSplitted[3]);
+					newKey.setPageRank(1.0);
+					this.articlePageRank = newKey;
 				}
 				
-				for(int i = 1; i<lineSplitted.length; i++) {
-					String outlink = lineSplitted[i];
-					
-					if (articlePageRank.getArticle().compareTo(outlink)!= 0) {
-						this.outlink.set(outlink);
-						context.write(articlePageRank, this.outlink);						
+				if (line.contains("MAIN")) {
+					String[] lineSplitted = line.split(" ");
+					ArrayList<String> outlinks = new ArrayList<String>(Arrays.asList(lineSplitted));
+					outlinks.remove(0);
+					if (lineSplitted.length == 1) {
+						this.outlink.set("");
+						context.write(articlePageRank, this.outlink);
 					}
-
+					
+					for(int i = 1; i<lineSplitted.length; i++) {
+						String outlink = lineSplitted[i];
+						
+						if (articlePageRank.getArticle().compareTo(outlink)!= 0) {
+							this.outlink.set(outlink);
+							context.write(articlePageRank, this.outlink);						
+						}
+					}
 				}
-			}
 			}
 		}
 
@@ -130,8 +129,7 @@ public class MySimpleMapReduceJob extends Configured implements Tool {
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(args[0]));
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
-		
-		job.getConfiguration().setInt("mapreduce.input.lineinputformat.linespermap", 14);
+	
 		job.setNumReduceTasks(4);
 
 		return (job.waitForCompletion(true) ? 0 : 1);
