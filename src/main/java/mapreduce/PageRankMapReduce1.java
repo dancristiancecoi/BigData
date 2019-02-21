@@ -25,7 +25,6 @@ public class PageRankMapReduce1 {
 	
 	static class Mapper1 extends Mapper<Object, Text, Text, Text> {
 		
-		//ArticlePageRankWritable articlePageRank = new ArticlePageRankWritable();
 		Text articleTitle = new Text();
 		Text outlink = new Text();
 		
@@ -38,13 +37,11 @@ public class PageRankMapReduce1 {
 		 * Page Rank Map 1 creates  [<Page title, Page Rank> - Outlink] pairs.
 		 * The PageRank is initialised to 1. 
 		 */
-		
 		protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			
 			String[] lines = value.toString().split("\n");
 			
 			for (String line : lines) {
-				
 				if (line.contains("REVISION")) {
 					String[] lineSplitted = line.split(" ");
 					this.articleTitle.set(lineSplitted[3]);
@@ -52,7 +49,6 @@ public class PageRankMapReduce1 {
 				
 				if (line.contains("MAIN")) {
 					String[] lineSplitted = line.split(" ");
-					
 					if (lineSplitted.length == 1) {
 						this.outlink.set("");
 						context.write(articleTitle, this.outlink);
@@ -62,18 +58,12 @@ public class PageRankMapReduce1 {
 						String outlink = lineSplitted[i];
 						this.outlink.set(outlink);
 						context.write(this.articleTitle, this.outlink);
+					}	
 				}
-					
-					
-					
-				}
-				
-				
-				
 			}
 		}
-
 	}
+	
 	/*
 	 * Reducer combines all the (<Article Title, Page Rank> - Outlink)  pairs into (<Article Title, Page Rank> - [Outlinks])
 	 * Self loops are removed and only unique outlinks are added to the Outlinks list. 
@@ -111,9 +101,6 @@ public class PageRankMapReduce1 {
 				}
 			}
 			context.write(new Text(articleTitle.concat("\t1.0")), new Text(outlinks.toString()));
-
-
-			
 		}
 		
 		@Override

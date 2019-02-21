@@ -1,6 +1,8 @@
 package mapreduce;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -17,62 +19,85 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 public class PageRank extends Configured implements Tool {
+	
+	public static String INPUT_PATH = "";
+	public static String OUTPUT_PATH = "";
+	public static int ITERATIONS = 5;
 
+	/* (non-Javadoc)
+	 * @see org.apache.hadoop.util.Tool#run(java.lang.String[])
+	 * 
+	 * This function calls and runs all the jobs required to run the PageRank algorithm.
+	 */
 	public int run(String[] args) throws Exception {
-//		Job job = Job.getInstance(getConf(), "PageRank");
-//		job.setJarByClass(MySimpleMapReduceJob.class);
-//		job.setMapperClass(PageRankMapReduce1.Mapper1.class);
-//		job.setReducerClass(PageRankMapReduce1.Reducer1.class);
-//		job.setOutputKeyClass(Text.class);
-//		job.setOutputValueClass(Text.class);
-//		FileInputFormat.addInputPath(job, new Path(args[0]));
-//		FileOutputFormat.setOutputPath(job, new Path(args[1]));
-//		job.setNumReduceTasks(4);
-//
-//		return (job.waitForCompletion(true) ? 0 : 1);
+		
+		//  check for valid parameters (needs to be changed to 4 when Date/Time filter implemented)
+		if (args.length!=3) {
+			System.out.println("\n ERROR: Incorrect number of parameters have been supplied \n");
+			System.exit(0);
+		}
+		
+		try {
+			PageRank.INPUT_PATH = args[0];
+			PageRank.OUTPUT_PATH = args[1];
+			PageRank.ITERATIONS = Integer.parseInt(args[2]);
+		}
+		catch (Exception e) {
+			System.out.println("\n ERROR: Invalid parameters have been supplied \n");
+			System.exit(0);
+		}
 		
         // delete output path if it exists already
         FileSystem fs = FileSystem.get(new Configuration());
-        if (fs.exists(new Path(args[1])))
-            fs.delete(new Path(args[1]), true);
-		
-		
-		PageRank pageRank = new PageRank();
-		boolean isCompleted = pageRank.job1(args[0], args[1] + "/job1");
+        if (fs.exists(new Path(PageRank.OUTPUT_PATH)))
+            fs.delete(new Path(PageRank.OUTPUT_PATH), true);
+        
+        PageRank pageRank = new PageRank();
+        NumberFormat nf = new DecimalFormat("00");
+        
+        System.out.println("\n RUNNING JOB #1: PARSING INPUT DATA \n");
+		boolean isCompleted = pageRank.job1(PageRank.INPUT_PATH, PageRank.OUTPUT_PATH + "/iter00");
 	    if (!isCompleted) {
+	    	System.out.println("\n JOB #2 ENCOUNTERED AN ERROR \n");
             System.exit(1);
         }
 	    
-	    isCompleted = pageRank.job2(args[1] + "/job1", args[1]+"/job2");
-    
-	    if (!isCompleted) {
-	    	System.exit(1);
-        }
-	   		
-		isCompleted = pageRank.job2(args[1]+"/job2", args[1]+"/job3");
-		
-	    if (!isCompleted) {
-	    	System.exit(1);
-        }
-		
-//		isCompleted = pageRank.job2(args[1]+"/job3", args[1]+"/job4");
-//		isCompleted = pageRank.job2(args[1]+"/job4", args[1]+"/job5");
-		
-		
-		return (isCompleted ? 0 : 1);
-
-		
+	    for (int i=0; i < PageRank.ITERATIONS; i++) {
+	    	String inputPath = PageRank.OUTPUT_PATH + "/iter" + nf.format(i);
+	    	String outputPath = PageRank.OUTPUT_PATH + "/iter" + nf.format(i+1);
+	    	System.out.println("\n RUNNING JOB #2: PAGERANK ITERATION " + (i+1) + " OUT OF " + PageRank.ITERATIONS + "\n");
+	    	isCompleted = pageRank.job2(inputPath, outputPath);
+	    	
+	    	// The program encountered an error before completing the loop
+	    	if (!isCompleted) {
+	    		System.out.println("\n JOB #2 ENCOUNTERED AN ERROR \n");
+		    	System.exit(1);
+	        }
+	    }
+		return (isCompleted ? 0 : 1);		
 	}
 	
 	
-	
+	/**
+	 * This is the first job run by HADOOP.
+	 * It will parse through the input file and extract
+	 * all information needed to perform the PageRank algorithm.
+	 * 
+	 * @param in - The input file directory path
+	 * @param out - The output file directory path
+	 * @return boolean - Did the job successfully complete
+	 * 
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 * @throws InterruptedException
+	 */
 	public boolean job1(String in, String out) throws IOException, 
 	ClassNotFoundException, InterruptedException {
 		
 		Configuration conf = new Configuration();
 	    conf.set("textinputformat.record.delimiter", "\n\n");
-		
 		Job job = Job.getInstance(conf, "job1");
+		
 		job.setJarByClass(PageRank.class);
 		job.setMapperClass(PageRankMapReduce1.Mapper1.class);
 		job.setReducerClass(PageRankMapReduce1.Reducer1.class);
@@ -85,6 +110,19 @@ public class PageRank extends Configured implements Tool {
 		return job.waitForCompletion(true);
 	}
 	
+	/**
+	 * This is the second job run by HADOOP.
+	 * This job is to be run iteratively, calculating the ranking.
+	 * The higher the number of iterations the more accurate the ranking.
+	 * 
+	 * @param in - The input file directory path
+	 * @param out - The output file directory path
+	 * @return boolean - Did the job successfully complete
+	 * 
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 * @throws InterruptedException
+	 */
 	public boolean job2(String in, String out) throws IOException, 
 	ClassNotFoundException, InterruptedException {
 

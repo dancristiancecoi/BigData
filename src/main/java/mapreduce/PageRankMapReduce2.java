@@ -61,7 +61,6 @@ public class PageRankMapReduce2 {
 		
 		Text articleTitle = new Text();
 		Text pageRank = new Text();
-		//Text outlinks = new Text();
 		
 		
 		@Override
@@ -71,19 +70,8 @@ public class PageRankMapReduce2 {
 
 		@Override
 		protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-			// something
 			float pageRank = 0;
 			Text outlinks = new Text();
-			
-//			for(Text value : values) {
-//				try {
-//					float number = Float.parseFloat(value.toString());
-//					pageRank += number;
-//				}
-//				catch(Exception e){
-//					this.outlinks.set(value);
-//				}
-//			}
 			
 			for (Text value: values) {
 				String newValue = value.toString();
@@ -96,12 +84,10 @@ public class PageRankMapReduce2 {
 					else
 						outlinks.set(value);
 				}
-
 			}
 			
 			pageRank = (float) (0.15 + 0.85 * pageRank); 
 			this.articleTitle.set(key.toString().concat("\t").concat(Float.toString(pageRank)));
-			//this.pageRank.set(Float.toString(pageRank));
 			
 			context.write(this.articleTitle, outlinks);
 		}
