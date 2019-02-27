@@ -118,7 +118,7 @@ public class PageRank extends Configured implements Tool {
 	/**
 	 * This is the second job run by HADOOP.
 	 * This job is to be run iteratively, calculating the ranking.
-	 * The higher the number of iterations the more accurate the ranking.
+	 * The higher th	e number of iterations the more accurate the ranking.
 	 * 
 	 * @param in - The input file directory path
 	 * @param out - The output file directory path
