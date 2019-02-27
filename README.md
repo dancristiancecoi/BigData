@@ -1,7 +1,7 @@
 # BigData
 ## Authors
-Dan Cristian Cecoi 2193860C
-Naji Shehab 2205596S
+Dan Cristian Cecoi 2193860C </br>
+Naji Shehab 2205596S </br>
 Sridha Agarwal 2208414A
 
 
