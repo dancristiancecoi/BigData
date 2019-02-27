@@ -2,6 +2,7 @@ package mapreduce;
 
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -24,13 +25,17 @@ import org.apache.hadoop.util.ToolRunner;
 public class PageRankMapReduce1 {
 	
 	static class Mapper1 extends Mapper<Object, Text, Text, Text> {
-		
+		Configuration conf;
+		Long timestamp;
 		Text articleTitle = new Text();
 		Text outlink = new Text();
 		
 		@Override
 		protected void setup(Context context) throws IOException, InterruptedException {
 			super.setup(context);
+			conf = context.getConfiguration();
+			String timestampS = conf.get("instance_of_timestamp");
+			this.timestamp = Long.parseLong(timestampS);
 		}
 		
 		/*
@@ -40,25 +45,34 @@ public class PageRankMapReduce1 {
 		protected void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			
 			String[] lines = value.toString().split("\n");
-			
+			long timestamp = 0;
 			for (String line : lines) {
 				if (line.contains("REVISION")) {
+					
 					String[] lineSplitted = line.split(" ");
 					this.articleTitle.set(lineSplitted[3]);
+					
+//					try {
+//						timestamp = utils.ISO8601.toTimeMS(lineSplitted[4]);
+//					} catch (ParseException e) {
+//						throw new IOException(e);
+//					}	
 				}
 				
-				if (line.contains("MAIN")) {
-					String[] lineSplitted = line.split(" ");
-					if (lineSplitted.length == 1) {
-						this.outlink.set("");
-						context.write(articleTitle, this.outlink);
+				if(timestamp <= this.timestamp) {
+					if (line.contains("MAIN")) {
+						String[] lineSplitted = line.split(" ");
+						if (lineSplitted.length == 1) {
+							this.outlink.set("");
+							context.write(articleTitle, this.outlink);
+						}
+						
+						for(int i = 1; i<lineSplitted.length; i++) {						
+							String outlink = lineSplitted[i];
+							this.outlink.set(outlink);
+							context.write(this.articleTitle, this.outlink);
+						}	
 					}
-					
-					for(int i = 1; i<lineSplitted.length; i++) {						
-						String outlink = lineSplitted[i];
-						this.outlink.set(outlink);
-						context.write(this.articleTitle, this.outlink);
-					}	
 				}
 			}
 		}

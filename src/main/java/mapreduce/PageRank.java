@@ -23,6 +23,7 @@ public class PageRank extends Configured implements Tool {
 	public static String INPUT_PATH = "";
 	public static String OUTPUT_PATH = "";
 	public static int ITERATIONS = 5;
+	public long TIMESTAMP=0;
 
 	/* (non-Javadoc)
 	 * @see org.apache.hadoop.util.Tool#run(java.lang.String[])
@@ -32,7 +33,7 @@ public class PageRank extends Configured implements Tool {
 	public int run(String[] args) throws Exception {
 		
 		//  check for valid parameters (needs to be changed to 4 when Date/Time filter implemented)
-		if (args.length!=3) {
+		if (args.length!=4) {
 			System.out.println("\n ERROR: Incorrect number of parameters have been supplied \n");
 			System.exit(0);
 		}
@@ -41,6 +42,7 @@ public class PageRank extends Configured implements Tool {
 			PageRank.INPUT_PATH = args[0];
 			PageRank.OUTPUT_PATH = args[1];
 			PageRank.ITERATIONS = Integer.parseInt(args[2]);
+			TIMESTAMP = utils.ISO8601.toTimeMS(args[3]);
 		}
 		catch (Exception e) {
 			System.out.println("\n ERROR: Invalid parameters have been supplied \n");
@@ -56,7 +58,7 @@ public class PageRank extends Configured implements Tool {
         NumberFormat nf = new DecimalFormat("00");
         
         System.out.println("\n RUNNING JOB #1: PARSING INPUT DATA \n");
-		boolean isCompleted = pageRank.job1(PageRank.INPUT_PATH, PageRank.OUTPUT_PATH + "/iter00");
+		boolean isCompleted = job1(PageRank.INPUT_PATH, PageRank.OUTPUT_PATH + "/iter00", TIMESTAMP);
 	    if (!isCompleted) {
 	    	System.out.println("\n JOB #2 ENCOUNTERED AN ERROR \n");
             System.exit(1);
@@ -66,19 +68,22 @@ public class PageRank extends Configured implements Tool {
 	    	String inputPath = PageRank.OUTPUT_PATH + "/iter" + nf.format(i);
 	    	String outputPath = PageRank.OUTPUT_PATH + "/iter" + nf.format(i+1);
 	    	System.out.println("\n RUNNING JOB #2: PAGERANK ITERATION " + (i+1) + " OUT OF " + PageRank.ITERATIONS + "\n");
-	    	isCompleted = pageRank.job2(inputPath, outputPath);
+	    	isCompleted = job2(inputPath, outputPath);
 	    	
 	    	// The program encountered an error before completing the loop
 	    	if (!isCompleted) {
 	    		System.out.println("\n JOB #2 ENCOUNTERED AN ERROR \n");
 		    	System.exit(1);
 	        }
-	    }
+	    } 
+	    String inputPath = PageRank.OUTPUT_PATH + "/iter" + nf.format(PageRank.ITERATIONS);
+	    String outputPath = PageRank.OUTPUT_PATH + "/finalOutput";
+	    isCompleted = job3(inputPath, outputPath);
 		return (isCompleted ? 0 : 1);		
 	}
 	
 	
-	/**
+	/**	
 	 * This is the first job run by HADOOP.
 	 * It will parse through the input file and extract
 	 * all information needed to perform the PageRank algorithm.
@@ -91,13 +96,13 @@ public class PageRank extends Configured implements Tool {
 	 * @throws ClassNotFoundException
 	 * @throws InterruptedException
 	 */
-	public boolean job1(String in, String out) throws IOException, 
+	public boolean job1(String in, String out, Long timestamp) throws IOException, 
 	ClassNotFoundException, InterruptedException {
 		
 		Configuration conf = new Configuration();
 	    conf.set("textinputformat.record.delimiter", "\n\n");
+	    conf.set("instance_of_timestamp", Long.toString(this.TIMESTAMP));
 		Job job = Job.getInstance(conf, "job1");
-		
 		job.setJarByClass(PageRank.class);
 		job.setMapperClass(PageRankMapReduce1.Mapper1.class);
 		job.setReducerClass(PageRankMapReduce1.Reducer1.class);
@@ -127,7 +132,6 @@ public class PageRank extends Configured implements Tool {
 	ClassNotFoundException, InterruptedException {
 
 		Job job = Job.getInstance(new Configuration(), "job2");
-
 		job.setJarByClass(PageRank.class);
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setMapperClass(PageRankMapReduce2.Mapper2.class);
@@ -137,6 +141,21 @@ public class PageRank extends Configured implements Tool {
 		FileInputFormat.addInputPath(job, new Path(in));
 		FileOutputFormat.setOutputPath(job, new Path(out));
 		job.setNumReduceTasks(4);
+		return job.waitForCompletion(true);
+	}
+	
+	public boolean job3(String in, String out) throws IOException, 
+	ClassNotFoundException, InterruptedException {
+
+		Job job = Job.getInstance(new Configuration(), "job3");
+		job.setJarByClass(PageRank.class);
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setMapperClass(PageRankMapReduce3.Mapper3.class);
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(Text.class);
+		FileInputFormat.addInputPath(job, new Path(in));
+		FileOutputFormat.setOutputPath(job, new Path(out));
+		job.setNumReduceTasks(0);
 		return job.waitForCompletion(true);
 	}
 
