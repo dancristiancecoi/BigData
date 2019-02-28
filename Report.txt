@@ -1,0 +1,58 @@
+Solution
+
+	3 Jobs were used in assessed excercise.
+
+	- Job #1: Parses through input file and extracts necessary information to perform pagerank.
+		- Configuration:
+			- To allow proper parsing of larger files (file size greater than a 128MB block) we 
+			  sent 14 line blocks into the Mapper. This was done by changing the default delimeter to
+			  "\n\n".
+			- We passed the user defined timestamp through the job's configuration.
+		- Mapper:
+			- Signature is defined as <Object, Text, Text, Text>
+			- Key: <Article Title>
+			- Value: <Outlink>
+		- Reducer:
+			- Signature is defined as <Text, Text, Text, Text>
+			- Key: <Article Title, Page Rank> --- Page Rank is intialised as ONE
+			- Value: <[Outlinks]>
+
+	- Job #2: Runs iteratively and calculates the pagerank for each article title. The higher the number of iterations, the more accurate the rank.
+		  This jobs reducer returns two key-value pairs. One with article title and list of outlinks and another with outlink title and the updated pagerank.
+		- Configuration:
+			- None
+		- Mapper:
+			- Signature is defined as <Object, Text, Text, Text>
+			- Key: <Object>
+			- Value: <Article Title PageRank [outlinks]> --- separated by tabs
+		- Reducer:
+			- Signature is defined as <Text, Text, Text, Text>
+			- Key1: <Article Title>
+			- Value1: <[Outlinks]>
+			- Key2: <Outlink Title>
+			- Value2: <PageRank>
+
+	- Job #3: Final job that outputs the article title and page rank pairs.
+		- Configuration:
+			- None
+		- Mapper:
+			- Signature is defined as <Object, Text, Text, Text>
+			- Key: <Object>
+			- Value: <Article Title, PageRank>
+
+Assumptions
+	- Record structure is consistent i.e 14 blocks,
+	- No spaces in outlinks title i.e all titles use underscore ('_') instead of spaces
+
+
+Optimisation
+	- To allow proper parsing of larger files (file size greater than a 128MB block) we 	
+	  sent 14 line blocks into the Mapper. This was done by changing the default delimeter to "\n\n".
+	- Removed self loops and filtered according to timestamps in first job. As a result it reduced amount of data read from disk and transferred over network.
+	- Upon performing a pagerank MapReduce on a specific I/O pair, if the output file of the path given already exists, we remove it from the file system to avoid any I/O errors.
+
+Modificaions:
+	- None
+
+Status
+	- Our solution produces partially correct results having high precision pagerank values with a minor error of having a fraction of additional or missing records. For eg. after running 5 iterations on date 2002-01-01T00:00:00Z, it produced an output of 216 records while the correct sample output had 214 records.
