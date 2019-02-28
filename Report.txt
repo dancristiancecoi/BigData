@@ -1,6 +1,6 @@
 Solution
 
-	3 Jobs were used in assessed excercise.
+	3 Jobs were used in assessed excercise. All Mapper/Reducer key-value pairs noted below are those that were OUTPUTED by the respective jobs. The reducers all take the input of the respective mapper, and every mapper takes the input of its previous job's reducer output.
 
 	- Job #1: Parses through input file and extracts necessary information to perform pagerank.
 		- Configuration:
@@ -19,8 +19,7 @@ Solution
 
 	- Job #2: Runs iteratively and calculates the pagerank for each article title. The higher the number of iterations, the more accurate the rank.
 		  This jobs mapper returns two key-value pairs. One with article title and list of outlinks and another with outlink title and the updated pagerank.
-		- Configuration:
-			- None
+		- Configuration: None
 		- Mapper:
 			- Signature is defined as <Object, Text, Text, Text>
 			- Key1: <Article_Title>
@@ -33,12 +32,12 @@ Solution
 			- Value: <[Outlinks]> --- separated by whitespace
 
 	- Job #3: Final job that outputs the article title and page rank pairs.
-		- Configuration:
-			- None
+		- Configuration: None
 		- Mapper:
 			- Signature is defined as <Object, Text, Text, Text>
 			- Key: <Object>
 			- Value: <Article_Title, PageRank>
+		- Reducer: None
 
 Assumptions
 	- Record structure is consistent i.e 14 blocks,
