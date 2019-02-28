@@ -10,27 +10,27 @@ Solution
 			- We passed the user defined timestamp through the job's configuration.
 		- Mapper:
 			- Signature is defined as <Object, Text, Text, Text>
-			- Key: <Article Title>
+			- Key: <Article_Title>
 			- Value: <Outlink>
 		- Reducer:
 			- Signature is defined as <Text, Text, Text, Text>
-			- Key: <Article Title, Page Rank> --- Page Rank is intialised as ONE
+			- Key: <Article_Title Page Rank> --- Page Rank is intialised as ONE and separated by tabs
 			- Value: <[Outlinks]>
 
 	- Job #2: Runs iteratively and calculates the pagerank for each article title. The higher the number of iterations, the more accurate the rank.
-		  This jobs reducer returns two key-value pairs. One with article title and list of outlinks and another with outlink title and the updated pagerank.
+		  This jobs mapper returns two key-value pairs. One with article title and list of outlinks and another with outlink title and the updated pagerank.
 		- Configuration:
 			- None
 		- Mapper:
 			- Signature is defined as <Object, Text, Text, Text>
-			- Key: <Object>
-			- Value: <Article Title PageRank [outlinks]> --- separated by tabs
+			- Key1: <Article_Title>
+			- Value1: <[Outlinks]>
+			- Key2: <Outlink_Title>
+			- Value2: <PageRank>
 		- Reducer:
 			- Signature is defined as <Text, Text, Text, Text>
-			- Key1: <Article Title>
-			- Value1: <[Outlinks]>
-			- Key2: <Outlink Title>
-			- Value2: <PageRank>
+			- Key: <Article_Title PageRank> --- separated by tabs
+			- Value: <[outlinks]> --- separated by tabs
 
 	- Job #3: Final job that outputs the article title and page rank pairs.
 		- Configuration:
@@ -38,7 +38,7 @@ Solution
 		- Mapper:
 			- Signature is defined as <Object, Text, Text, Text>
 			- Key: <Object>
-			- Value: <Article Title, PageRank>
+			- Value: <Article_Title, PageRank>
 
 Assumptions
 	- Record structure is consistent i.e 14 blocks,
