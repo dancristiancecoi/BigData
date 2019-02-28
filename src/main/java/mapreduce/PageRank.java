@@ -140,7 +140,7 @@ public class PageRank extends Configured implements Tool {
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(in));
 		FileOutputFormat.setOutputPath(job, new Path(out));
-		job.setNumReduceTasks(4);
+		job.setNumReduceTasks(1);
 		return job.waitForCompletion(true);
 	}
 	
