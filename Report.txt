@@ -14,8 +14,8 @@ Solution
 			- Value: <Outlink>
 		- Reducer:
 			- Signature is defined as <Text, Text, Text, Text>
-			- Key: <Article_Title Page Rank> --- Page Rank is intialised as ONE and separated by tabs
-			- Value: <[Outlinks]>
+			- Key: <Article_Title Page Rank> --- Page Rank is intialised as ONE
+			- Value: <[Outlinks]> --- seperated by whitespace
 
 	- Job #2: Runs iteratively and calculates the pagerank for each article title. The higher the number of iterations, the more accurate the rank.
 		  This jobs mapper returns two key-value pairs. One with article title and list of outlinks and another with outlink title and the updated pagerank.
@@ -30,7 +30,7 @@ Solution
 		- Reducer:
 			- Signature is defined as <Text, Text, Text, Text>
 			- Key: <Article_Title PageRank> --- separated by tabs
-			- Value: <[outlinks]> --- separated by tabs
+			- Value: <[Outlinks]> --- separated by whitespace
 
 	- Job #3: Final job that outputs the article title and page rank pairs.
 		- Configuration:
