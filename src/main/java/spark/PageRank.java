@@ -78,9 +78,8 @@ public class PageRank {
 						timestamp = 0;
 					}
 				}	
-				
 		
-				if (article.equals("") || timestamp > TIMESTAMP) {
+				if (article.equals("") || timestamp >= TIMESTAMP) {
 					return new Tuple2<String, String>("", Long.toString(0).concat("\t").concat(""));
 				}
 				
@@ -105,6 +104,7 @@ public class PageRank {
 					}
 				}
 			}
+			
 			return new Tuple2<String, String>(article, Long.toString(timestamp).concat("\t").concat(outlinks.toString())); 
 		
 			}).reduceByKey((a,b) -> {
@@ -119,17 +119,20 @@ public class PageRank {
 		links.saveAsTextFile(OUTPUT_PATH);
 		System.out.println(links.count());
 		
-		// Initialises page rank 1 to records
+		// Initialises pagerank 1
 		JavaPairRDD<String, Double> ranks = links.mapValues(s -> 1.0);
+		
+//		ranks.saveAsTextFile(OUTPUT_PATH);
 		
 		for(int i = 0; i < ITERATIONS; i++) {
 			JavaPairRDD<String, Double> contribs = links.join(ranks).values()
 				.flatMapToPair(v -> {
 					List<Tuple2<String, Double>> res = new ArrayList<Tuple2<String, Double>>();
-					int urlCount = Iterables.size(v._1);
-					for (String s : v._1) {
-						res.add(new Tuple2<String, Double>(s, v._2() / urlCount));
-					}
+//					String outlinks = 
+//					int urlCount = Iterables.size(v._1);
+//					for (String s : v._1) {
+//						res.add(new Tuple2<String, Double>(s, v._2() / urlCount));
+//					}
 					return res;
 				});
 				ranks = contribs.reduceByKey((a, b) -> a+b).mapValues(v -> 0.15 + v * 0.85);
