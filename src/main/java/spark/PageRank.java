@@ -1,6 +1,8 @@
 package spark;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.io.IOException;
 import java.text.ParseException;
 
@@ -12,10 +14,17 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import com.google.common.collect.Iterables;
+
 import scala.Tuple2;
 
 public class PageRank {
-	static long TIMESTAMP = 0;
+	
+//	public static String INPUT_PATH = "";
+//	public static String OUTPUT_PATH = "";
+//	public static int ITERATIONS = 5;
+//	public static long TIMESTAMP = 0;
+	
 
 
 	public static void main(String[] args) throws Exception {
@@ -26,13 +35,16 @@ public class PageRank {
 			System.exit(0);
 		}
 		
+		String INPUT_PATH = "";
+		String OUTPUT_PATH = "";
 		int ITERATIONS = 5;
-//		long TIMESTAMP = 0;
-		String out = args[1];
+		long TIMESTAMP = utils.ISO8601.toTimeMS(args[3]);
 		
 		try {
+			INPUT_PATH = args[0];
+			OUTPUT_PATH = args[1];
 			ITERATIONS = Integer.parseInt(args[2]);
-			TIMESTAMP = utils.ISO8601.toTimeMS(args[3]);
+//			TIMESTAMP = utils.ISO8601.toTimeMS(args[3]);
 		}
 		
 		catch (Exception e) {
@@ -42,70 +54,86 @@ public class PageRank {
 		
         // delete output path if it exists already
         FileSystem fs = FileSystem.get(new Configuration());
-        if (fs.exists(new Path(out)))
-            fs.delete(new Path(out), true);
+        if (fs.exists(new Path(OUTPUT_PATH)))
+            fs.delete(new Path(OUTPUT_PATH), true);
         
         
 		JavaSparkContext sc = new JavaSparkContext(new SparkConf().setAppName("PageRank"));
-		sc.hadoopConfiguration().set("textinputformat.record.delimeter", "\n\n");
-		JavaRDD<String> lines = sc.textFile(args[0], 1);
+		sc.hadoopConfiguration().set("textinputformat.record.delimiter", "\n\n");
 		
+		JavaRDD<String> lines = sc.textFile(INPUT_PATH);
 		
-		JavaPairRDD<String, String> line = lines.mapToPair( (String s) -> {
+
+		JavaPairRDD<String, String> links = lines.mapToPair( (String line) -> {
 			String article = "";
-			String outlinks = "";
-			String timestamp = "";
-			
-			for (String l : s.split("\n")) {
-				if(l.contains("REVISION")) {
+			StringBuilder outlinks = new StringBuilder();
+			long timestamp = 0;
+			for (String l: line.split("\n")) {
+				if(l.startsWith("REVISION")) {
 					String[] lineSplitted = l.split(" ");
 					article = lineSplitted[3]; 
-					timestamp = (lineSplitted[4]);
+					try {
+						timestamp = utils.ISO8601.toTimeMS(lineSplitted[4]);
+					} catch (ParseException e) {
+						timestamp = 0;
+					}
+				}	
+				
+		
+				if (article.equals("") || timestamp > TIMESTAMP) {
+					return new Tuple2<String, String>("", Long.toString(0).concat("\t").concat(""));
 				}
 				
-//				if(timestamp <= TIMESTAMP) {
-//					return new Tuple2<String, String>("", "");
-//				}
-				
-				if(l.contains("MAIN")) {
+
+				if(l.startsWith("MAIN")) {
 					String[] lineSplitted = l.split(" ");
+					// no outlinks
 					if(lineSplitted.length == 1) {
-						outlinks = "";
+						return new Tuple2<String, String>(article, Long.toString(timestamp).concat("\t").concat("")); 
 					}
 					
-					else {
-						for(int i = 1; i<lineSplitted.length; i++) {
-							// ignore self loops
-							if (lineSplitted[i] == article) {
-								continue;
-							}
-							// ignore duplicating outlinks
-							if (!outlinks.contains(lineSplitted[i])) {
-								outlinks += lineSplitted[i] + " ";
-							}
+					
+					for(int i = 1; i<lineSplitted.length; i++) {
+						// ignore self loops
+						if (lineSplitted[i] == article) {
+							continue;
+						}
+						// ignore duplicating outlinks
+						if (!outlinks.toString().contains(lineSplitted[i])) {
+							outlinks.append(lineSplitted[i]).append(" ");
 						}
 					}
 				}
 			}
-			return new Tuple2<String, String>(article, timestamp + " " + outlinks);
+			return new Tuple2<String, String>(article, Long.toString(timestamp).concat("\t").concat(outlinks.toString())); 
+		
 			}).reduceByKey((a,b) -> {
-				String a_time = a.split("\\s+")[0];
-				String b_time = b.split("\\s+")[0];
-				System.out.println(a_time);
-				System.out.println(b_time);
-				if (utils.ISO8601.toTimeMS(a_time) > utils.ISO8601.toTimeMS(b_time)) {
-					return a;
-				} else {
-					return b;
-				}
+				// get most recent timestamp
+				long a_time = Long.parseLong(a.split("\t")[0]);
+				long b_time = Long.parseLong(b.split("\t")[0]);
+	
+				return a_time > b_time ? a : b;
 				
 			});
 		
-		System.out.println(out);
-		line.saveAsTextFile(out);
+		links.saveAsTextFile(OUTPUT_PATH);
+		System.out.println(links.count());
+		
+		// Initialises page rank 1 to records
+		JavaPairRDD<String, Double> ranks = links.mapValues(s -> 1.0);
+		
+		for(int i = 0; i < ITERATIONS; i++) {
+			JavaPairRDD<String, Double> contribs = links.join(ranks).values()
+				.flatMapToPair(v -> {
+					List<Tuple2<String, Double>> res = new ArrayList<Tuple2<String, Double>>();
+					int urlCount = Iterables.size(v._1);
+					for (String s : v._1) {
+						res.add(new Tuple2<String, Double>(s, v._2() / urlCount));
+					}
+					return res;
+				});
+				ranks = contribs.reduceByKey((a, b) -> a+b).mapValues(v -> 0.15 + v * 0.85);
+		}
+		List<Tuple2<String, Double>> output = ranks.collect();
 	}
 }
-
-/**
-spark-submit --master yarn --deploy-mode cluster --class spark.PageRank /users/level4/2208414a/eclipse-workspace/BigData/target/uog-bigdata-0.0.1-SNAPSHOT.jar /user/enwiki/enwiki-20080103-sample.txt spark_pr0 1
-**/
