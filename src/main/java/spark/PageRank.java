@@ -64,7 +64,7 @@ public class PageRank {
 		JavaRDD<String> lines = sc.textFile(INPUT_PATH);
 		
 
-		JavaPairRDD<String, String> links = lines.mapToPair( (String line) -> {
+		JavaPairRDD<String, Tuple2<Long, String>> links = lines.mapToPair( (String line) -> {
 			String article = "";
 			StringBuilder outlinks = new StringBuilder();
 			long timestamp = 0;
@@ -80,7 +80,7 @@ public class PageRank {
 				}	
 		
 				if (article.equals("") || timestamp >= TIMESTAMP) {
-					return new Tuple2<String, String>("", Long.toString(0).concat("\t").concat(""));
+					return new Tuple2<String, Tuple2<Long, String>>("", new Tuple2<Long, String>((long) 0, ""));
 				}
 				
 
@@ -88,9 +88,9 @@ public class PageRank {
 					String[] lineSplitted = l.split(" ");
 					// no outlinks
 					if(lineSplitted.length == 1) {
-						return new Tuple2<String, String>(article, Long.toString(timestamp).concat("\t").concat("")); 
+						return new Tuple2<String, Tuple2<Long, String>>(article, new Tuple2<Long, String>(timestamp, ""));
 					}
-					
+//					
 					
 					for(int i = 1; i<lineSplitted.length; i++) {
 						// ignore self loops
@@ -105,38 +105,42 @@ public class PageRank {
 				}
 			}
 			
-			return new Tuple2<String, String>(article, Long.toString(timestamp).concat("\t").concat(outlinks.toString())); 
+			return new Tuple2<String, Tuple2<Long, String>>(article, new Tuple2<Long, String>(timestamp, outlinks.toString()));
 		
 			}).reduceByKey((a,b) -> {
 				// get most recent timestamp
-				long a_time = Long.parseLong(a.split("\t")[0]);
-				long b_time = Long.parseLong(b.split("\t")[0]);
+				long a_time = a._1;
+				long b_time = b._1;
 	
 				return a_time > b_time ? a : b;
 				
 			});
 		
-		links.saveAsTextFile(OUTPUT_PATH);
-		System.out.println(links.count());
+//		links.saveAsTextFile("spark-input");
+//		System.out.println(links.count());
 		
 		// Initialises pagerank 1
 		JavaPairRDD<String, Double> ranks = links.mapValues(s -> 1.0);
 		
-//		ranks.saveAsTextFile(OUTPUT_PATH);
+//		ranks.saveAsTextFile("spark-rank");
 		
 		for(int i = 0; i < ITERATIONS; i++) {
 			JavaPairRDD<String, Double> contribs = links.join(ranks).values()
 				.flatMapToPair(v -> {
 					List<Tuple2<String, Double>> res = new ArrayList<Tuple2<String, Double>>();
-//					String outlinks = 
-//					int urlCount = Iterables.size(v._1);
-//					for (String s : v._1) {
-//						res.add(new Tuple2<String, Double>(s, v._2() / urlCount));
-//					}
+					// <article, <timestamp, outlinks, pr>>
+					String outlinkString = v._1._2;
+					String[] outlinks = outlinkString.split("\\s+");
+					int urlCount = outlinks.length;
+					for (String outlink : outlinks) {
+						res.add(new Tuple2<String, Double>(outlink, v._2() / urlCount));
+					}
 					return res;
 				});
 				ranks = contribs.reduceByKey((a, b) -> a+b).mapValues(v -> 0.15 + v * 0.85);
 		}
+		ranks.saveAsTextFile(OUTPUT_PATH);
 		List<Tuple2<String, Double>> output = ranks.collect();
+//		System.out.println(output);
 	}
 }
